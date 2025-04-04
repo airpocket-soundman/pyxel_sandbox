@@ -10,8 +10,9 @@ GROUND_Y = 240
 FRAME_RATE = 60
 GRAVITY = 9.8
 THRUST = 12.0
-GRAVITY_PER_FRAME = GRAVITY / FRAME_RATE
-THRUST_PER_FRAME = THRUST / FRAME_RATE
+SCALE = 0.3  # スケール係数
+GRAVITY_PER_FRAME = (GRAVITY / FRAME_RATE) * SCALE
+THRUST_PER_FRAME = (THRUST / FRAME_RATE) * SCALE
 
 class Particle:
     def __init__(self, x, y, dx, dy, lifetime, color, smoke=False):
@@ -52,7 +53,7 @@ class Particle:
 class App:
     def __init__(self):
         pyxel.init(256, 256, title="Rocket Launch")
-        self.rocket_x = pyxel.width // 2
+        self.rocket_x = 128
         self.rocket_y = GROUND_Y - ROCKET_HEIGHT // 2
         self.rocket_angle = -math.pi / 2
         self.rotation_speed = math.radians(2)
@@ -107,7 +108,7 @@ class App:
                 if not p.is_smoke:
                     lifetime = PARTICLE_LIFETIME * 20
                     dx = random.uniform(-0.2, 0.0)
-                    dy = random.uniform(-0.2, 0.1)
+                    dy = random.uniform(-0.1, 0.1)
                     self.particles.append(Particle(p.x, p.y, dx, dy, lifetime, 7, smoke=True))
             elif spawn_smoke:
                 self.particles.remove(p)
@@ -117,7 +118,7 @@ class App:
     def spawn_particles_from_base_line(self):
         current_base_x, current_base_y = self.get_rocket_base_position()
         dist = math.hypot(current_base_x - self.last_base_x, current_base_y - self.last_base_y)
-        steps = max(1, int(dist*30))
+        steps = max(1, int(dist*20))
 
         for i in range(steps):
             t = i / steps
@@ -144,7 +145,7 @@ class App:
             speed = random.uniform(0.2, 0.5)
             dx = math.cos(angle) * speed
             dy = math.sin(angle) * speed
-            lifetime = int(random.uniform(PARTICLE_LIFETIME * 20 * 0.7, PARTICLE_LIFETIME * 2 * 1.3))
+            lifetime = int(random.uniform(PARTICLE_LIFETIME * 0.7, PARTICLE_LIFETIME * 1.3)) * 20
             color = 7
             particles.append(Particle(x, y, dx, dy, lifetime, color, smoke=True))
         return particles
@@ -167,10 +168,10 @@ class App:
         for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
             x = cx + dx * cos_a - dy * sin_a
             y = cy + dx * sin_a + dy * cos_a
-            corners.append((x, y))
+            corners.append((int(x), int(y)))
         for i in range(4):
             x1, y1 = corners[i]
             x2, y2 = corners[(i + 1) % 4]
-            pyxel.line(int(x1), int(y1), int(x2), int(y2), pyxel.COLOR_WHITE)
+            pyxel.line(x1, y1, x2, y2, pyxel.COLOR_WHITE)
 
 App()
