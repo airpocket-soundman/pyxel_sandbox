@@ -3,7 +3,7 @@ import math
 
 WIDTH = 160
 HEIGHT = 120
-SUBSTEPS = 4  # サブステップ数
+SUBSTEPS = 8  # サブステップ数
 
 def get_obb_vertices(cx, cy, w, h, angle_deg):
     angle = math.radians(angle_deg)

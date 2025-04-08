@@ -8,7 +8,7 @@ class CameraApp:
     def __init__(self):
         pyxel.init(256, 256, title="USB Camera Cropped View")
 
-        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
         # カメラ解像度取得と表示
         width  = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))

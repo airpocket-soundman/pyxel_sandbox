@@ -13,7 +13,7 @@ class RotatingResolutionCameraApp:
         for i, gray in enumerate(reversed([int(j * 255 / 15) for j in range(16)])):
             pyxel.colors[i] = (gray << 16) | (gray << 8) | gray
 
-        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
         # カスタム解像度リスト
         self.res_list = [24, 36, 48, 64, 72, 80, 96, 128, 160, 196, 224, 256]
