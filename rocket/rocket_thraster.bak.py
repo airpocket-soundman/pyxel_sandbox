@@ -25,7 +25,7 @@ FLAME_PARTICLE_SPEED = 2.0
 FLAME_PARTICLE_DENSITY = 2
 
 # スモーク
-SMOKE_PARTICLE_COUNT = 5
+SMOKE_PARTICLE_COUNT = 12
 SMOKE_PARTICLE_LIFETIME = FLAME_PARTICLE_LIFETIME * 20
 SMOKE_PARTICLE_SPEED_MIN = 0.2
 SMOKE_PARTICLE_SPEED_MAX = 0.5
@@ -37,7 +37,7 @@ THRUSTER_PARTICLE_LIFETIME = 3
 THRUSTER_ANGLE_VARIATION = math.radians(10)
 
 # 衝突判定
-RANDING_SPEEED = 0.5  # 衝突判定の閾値（速度）
+RANDING_SPEEED = 1.5  # 衝突判定の閾値（速度）
 
 class Particle:
     def __init__(self, x, y, dx, dy, lifetime, color, smoke=False):
@@ -96,7 +96,6 @@ class App:
         self.last_base_x, self.last_base_y = self.get_rocket_base_position()
         self.fallen = False
         self.exploded = False
-        self.exploded_done = False
 
     def get_rocket_base_position(self):
         base_x = self.rocket_x - (ROCKET_HEIGHT / 2) * math.cos(self.rocket_angle)
@@ -122,27 +121,15 @@ class App:
             self.reset()
 
         if self.fallen:
-            
-            if self.exploded:
-                self.trigger_explosion_effect()
-                self.exploded = False  # 実行後にフラグをリセット
-
-            # パーティクルだけ更新し続ける
+            # パーティクルがすべて消えるまで待つ
             self.update_particles()
-
-            # パーティクルがすべて消えるまで処理継続（終了せずに待機）
             if not self.flame_particles and not self.smoke_particles and not self.thruster_particles:
                 return
             return
 
-        if self.exploded:
-            self.trigger_explosion_effect()
-            self.exploded_done = True
-            self.exploded = False  # 実行後にフラグをリセット
-
         self.last_base_x, self.last_base_y = self.get_rocket_base_position()
 
-        if not self.exploded_done and pyxel.btn(pyxel.KEY_SPACE):
+        if pyxel.btn(pyxel.KEY_SPACE):
             ax = math.cos(self.rocket_angle) * self.thrust
             ay = math.sin(self.rocket_angle) * self.thrust
             self.vx += ax
@@ -160,16 +147,6 @@ class App:
             speed = math.hypot(self.vx, self.vy)
             if speed > RANDING_SPEEED:
                 self.exploded = True
-                
-                # 強制転倒（12°以内なら13°に）
-                angle_deg = math.degrees(self.rocket_angle) + 90
-                if abs(angle_deg) <= 12:
-                    if angle_deg >= 0:
-                        self.rocket_angle = math.radians(13 - 90)  # +13°
-                    else:
-                        self.rocket_angle = math.radians(-13 - 90)  # -13°
-
-
 
 
             if len(grounded) == 1:
@@ -181,7 +158,7 @@ class App:
                     elif angle_deg < -12:
                         self.rotation_speed -= ROTATION_ACCELERATION
                     elif abs(angle_deg) <= 12:
-                        if angle_deg > 0: 
+                        if angle_deg > 0:
                             self.rotation_speed -= ROTATION_ACCELERATION
                         elif angle_deg < 0:
                             self.rotation_speed += ROTATION_ACCELERATION
@@ -189,17 +166,15 @@ class App:
                     self.rocket_angle += self.rotation_speed
                     if abs(self.rotation_speed) < 0.00001:
                         self.rotation_speed = 0.0
-                        if not self.exploded and not self.exploded_done:
-                            self.rocket_angle = -math.pi / 2
+                        self.rocket_angle = -math.pi / 2
                 else:
                     self.rotation_speed = 0
             else:
                 self.rotation_speed = 0
-                if not self.exploded and not self.exploded_done:
-                    self.rocket_angle = -math.pi / 2
+                self.rocket_angle = -math.pi / 2
 
-            is_turning_left = not self.exploded_done and pyxel.btn(pyxel.KEY_LEFT)
-            is_turning_right = not self.exploded_done and pyxel.btn(pyxel.KEY_RIGHT)
+            is_turning_left = pyxel.btn(pyxel.KEY_LEFT)
+            is_turning_right = pyxel.btn(pyxel.KEY_RIGHT)
 
             if len(grounded) == 1:
                 anchor_pt, dx_anchor, dy_anchor = grounded[0]
@@ -233,13 +208,12 @@ class App:
 
         else:
             self.rotation_speed = 0
-            if not self.fallen:
-                if pyxel.btn(pyxel.KEY_LEFT):
-                    self.rocket_angle -= math.radians(2)
-                    self.spawn_thruster_particles("right")
-                if pyxel.btn(pyxel.KEY_RIGHT):
-                    self.rocket_angle += math.radians(2)
-                    self.spawn_thruster_particles("left")
+            if pyxel.btn(pyxel.KEY_LEFT):
+                self.rocket_angle -= math.radians(2)
+                self.spawn_thruster_particles("right")
+            if pyxel.btn(pyxel.KEY_RIGHT):
+                self.rocket_angle += math.radians(2)
+                self.spawn_thruster_particles("left")
 
         if pyxel.btn(pyxel.KEY_SPACE):
             self.spawn_flame_particles_from_base_line()
@@ -337,43 +311,10 @@ class App:
 
     def draw(self):
         pyxel.cls(0)
-
-        # 地面（カラー4：茶色）
         pyxel.rect(0, GROUND_Y, pyxel.width, pyxel.height - GROUND_Y, 4)
-
-        # 発射台（カラー5：グレー）
-        pad_width = 40
-        pad_height = 8
-        pad_x = pyxel.width // 2 - pad_width // 2
-        pad_y = GROUND_Y
-        pyxel.rect(pad_x, pad_y, pad_width, pad_height, 5)
-
-        # タワー（トラス構造 / 白：カラー7）
-        tower_height = int(ROCKET_HEIGHT * 2.5)  # 60
-        tower_x = pad_x + pad_width - 7    # 発射台の右側にオフセット
-        tower_y_top = GROUND_Y - tower_height
-        tower_y_bottom = GROUND_Y
-
-        # 縦の支柱
-        pyxel.line(tower_x, tower_y_top, tower_x, tower_y_bottom, 7)
-        pyxel.line(tower_x + 6, tower_y_top, tower_x + 6, tower_y_bottom, 7)
-
-        # 横の連結（5ピクセルおき）
-        for y in range(tower_y_top, tower_y_bottom, 5):
-            pyxel.line(tower_x, y, tower_x + 6, y, 7)
-
-        # 斜めのトラス（交差するX構造）
-        for i in range(0, tower_height, 10):
-            y1 = tower_y_top + i
-            y2 = y1 + 10
-            if y2 <= tower_y_bottom:
-                pyxel.line(tower_x, y1, tower_x + 6, y2, 7)
-                pyxel.line(tower_x + 6, y1, tower_x, y2, 7)
-
-        # ロケット本体
         self.draw_rotated_rocket()
 
-        # HUD描画
+        # --- HUD描画 ---
         speed = math.hypot(self.vx, self.vy)
         height = GROUND_Y - self.rocket_y
         horizontal = self.rocket_x - 128
@@ -391,13 +332,14 @@ class App:
         for i, line in enumerate(lines):
             pyxel.text(pyxel.width - 60, 4 + i * 8, line, 7)
 
-        # パーティクル描画
+        # --- パーティクル描画 ---
         for p in self.flame_particles:
             p.draw()
         for p in self.smoke_particles:
             p.draw()
         for p in self.thruster_particles:
             p.draw()
+
 
     def draw_rotated_rocket(self):
         cx = self.rocket_x
@@ -407,50 +349,19 @@ class App:
         sin_a = math.sin(self.rocket_angle)
         cos_a = math.cos(self.rocket_angle)
 
-        color = pyxel.COLOR_RED if self.exploded else pyxel.COLOR_WHITE
-
-        # === 第1段（中心：cx, cy） ===
-        stage1_corners = []
+        corners = []
         for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
             x = cx + dx * cos_a - dy * sin_a
             y = cy + dx * sin_a + dy * cos_a
-            stage1_corners.append((int(x), int(y)))
+            corners.append((int(x), int(y)))
+
+        # ★ ロケットが爆発していたら赤、それ以外は白
+        color = pyxel.COLOR_RED if self.exploded else pyxel.COLOR_WHITE
 
         for i in range(4):
-            x1, y1 = stage1_corners[i]
-            x2, y2 = stage1_corners[(i + 1) % 4]
+            x1, y1 = corners[i]
+            x2, y2 = corners[(i + 1) % 4]
             pyxel.line(x1, y1, x2, y2, color)
 
-        # === 第2段（第1段の“上”に描画） ===
-        # → 第1段の中心から「ロケットの向き」にROCKET_HEIGHT分上へずらす
-        offset_x = ROCKET_HEIGHT * cos_a
-        offset_y = ROCKET_HEIGHT * sin_a
-        stage2_cx = cx + offset_x
-        stage2_cy = cy + offset_y
-
-        stage2_corners = []
-        for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
-            x = stage2_cx + dx * cos_a - dy * sin_a
-            y = stage2_cy + dx * sin_a + dy * cos_a
-            stage2_corners.append((int(x), int(y)))
-
-        for i in range(4):
-            x1, y1 = stage2_corners[i]
-            x2, y2 = stage2_corners[(i + 1) % 4]
-            pyxel.line(x1, y1, x2, y2, color)
-
-
-
-    def trigger_explosion_effect(self):
-        for _ in range(500):  # 爆発パーティクル数（調整可）
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(1.5, 3.5)
-            dx = math.cos(angle) * speed
-            dy = math.sin(angle) * speed
-            lifetime = random.randint(15, 30)
-            color = random.choice([pyxel.COLOR_RED, pyxel.COLOR_ORANGE, pyxel.COLOR_YELLOW])
-            self.flame_particles.append(
-                Particle(self.rocket_x, self.rocket_y, dx, dy, lifetime, color, smoke=False)
-            )
 
 App()

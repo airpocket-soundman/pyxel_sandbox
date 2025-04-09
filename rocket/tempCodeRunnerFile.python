@@ -1,0 +1,4 @@
+            chopstick_length = 30
+            chopstick_width = 1
+            chopstick_y = GROUND_Y - tower_height + 10
+            pyxel.line(tower_x, chopstick_y, tower_x - chopstick_length, chopstick_y, 8)  # 左向きに棒を描画（カラー8）

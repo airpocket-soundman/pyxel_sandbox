@@ -1,20 +1,12 @@
-    def draw_rotated_rocket(self):
-        cx = self.rocket_x
-        cy = self.rocket_y
-        w2 = ROCKET_WIDTH / 2
-        h2 = ROCKET_HEIGHT / 2
+            if self.draw_stage2:
+                # 第1段の中心位置から、ロケットの「向き」方向に半分の長さだけ移動すれば境界になる
+                border_x = cx + h2 * cos_a
+                border_y = cy + h2 * sin_a
 
-        sin_a = math.sin(self.rocket_angle)
-        cos_a = math.cos(self.rocket_angle)
+                # 幅の半分で左右に広げて境界線を描く（カラーは白で）
+                left_x = border_x - w2 * sin_a
+                left_y = border_y + w2 * cos_a
+                right_x = border_x + w2 * sin_a
+                right_y = border_y - w2 * cos_a
 
-        # ここで dx = 縦方向、dy = 横方向 にする！
-        corners = []
-        for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
-            x = cx + dx * cos_a - dy * sin_a
-            y = cy + dx * sin_a + dy * cos_a
-            corners.append((x, y))
-
-        for i in range(4):
-            x1, y1 = corners[i]
-            x2, y2 = corners[(i + 1) % 4]
-            pyxel.line(int(x1), int(y1), int(x2), int(y2), pyxel.COLOR_WHITE)
+                pyxel.line(int(left_x), int(left_y), int(right_x), int(right_y), pyxel.COLOR_WHITE)

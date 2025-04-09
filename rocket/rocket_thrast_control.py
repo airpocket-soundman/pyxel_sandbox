@@ -39,6 +39,10 @@ THRUSTER_ANGLE_VARIATION = math.radians(10)
 # 衝突判定
 RANDING_SPEEED = 0.5  # 衝突判定の閾値（速度）
 
+# 表示設定
+SHOW_STAGE2 = True  # 第2段を描画するかどうか（Trueで描画、Falseで非表示）
+
+
 class Particle:
     def __init__(self, x, y, dx, dy, lifetime, color, smoke=False):
         self.x = x
@@ -78,6 +82,7 @@ class Particle:
 class App:
     def __init__(self):
         pyxel.init(256, 256, title="Rocket Launch")
+        self.draw_stage2 = SHOW_STAGE2  # ← このように初期化
         self.reset()
         pyxel.run(self.update, self.draw)
 
@@ -97,6 +102,7 @@ class App:
         self.fallen = False
         self.exploded = False
         self.exploded_done = False
+        self.thrust_level = 1.0
 
     def get_rocket_base_position(self):
         base_x = self.rocket_x - (ROCKET_HEIGHT / 2) * math.cos(self.rocket_angle)
@@ -139,6 +145,13 @@ class App:
             self.trigger_explosion_effect()
             self.exploded_done = True
             self.exploded = False  # 実行後にフラグをリセット
+        
+        # ↑↓キーで出力（スロットル）を調整
+        if pyxel.btn(pyxel.KEY_UP):
+            self.thrust_level = min(1.0, self.thrust_level + 0.01)
+        if pyxel.btn(pyxel.KEY_DOWN):
+            self.thrust_level = max(0.0, self.thrust_level - 0.01)
+        self.thrust = THRUST_PER_FRAME * self.thrust_level
 
         self.last_base_x, self.last_base_y = self.get_rocket_base_position()
 
@@ -336,7 +349,7 @@ class App:
                 self.thruster_particles.remove(p)
 
     def draw(self):
-        pyxel.cls(0)
+        pyxel.cls(12)
 
         # 地面（カラー4：茶色）
         pyxel.rect(0, GROUND_Y, pyxel.width, pyxel.height - GROUND_Y, 4)
@@ -386,7 +399,8 @@ class App:
             f"HGT: {height: >+9.2f}",
             f"XOF: {horizontal: >+9.2f}",
             f"ANG: {angle_deg: >+9.2f}",
-            f"RSP: {self.rotation_speed: >+9.6f}"
+            f"RSP: {self.rotation_speed: >+9.6f}",
+            f"THR: {self.thrust_level: >6.2f}" 
         ]
         for i, line in enumerate(lines):
             pyxel.text(pyxel.width - 60, 4 + i * 8, line, 7)
@@ -407,37 +421,50 @@ class App:
         sin_a = math.sin(self.rocket_angle)
         cos_a = math.cos(self.rocket_angle)
 
-        color = pyxel.COLOR_RED if self.exploded else pyxel.COLOR_WHITE
+        # 色：爆発時は赤、通常は濃いグレー（カラー13）
+        color = pyxel.COLOR_RED if self.exploded else 1
 
-        # === 第1段（中心：cx, cy） ===
+        # === 第1段ロケット ===
         stage1_corners = []
         for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
             x = cx + dx * cos_a - dy * sin_a
             y = cy + dx * sin_a + dy * cos_a
-            stage1_corners.append((int(x), int(y)))
+            stage1_corners.append((x, y))
 
-        for i in range(4):
-            x1, y1 = stage1_corners[i]
-            x2, y2 = stage1_corners[(i + 1) % 4]
-            pyxel.line(x1, y1, x2, y2, color)
+        # 三角形2枚で塗りつぶす
+        pyxel.tri(*map(int, stage1_corners[0] + stage1_corners[1] + stage1_corners[2]), color)
+        pyxel.tri(*map(int, stage1_corners[2] + stage1_corners[3] + stage1_corners[0]), color)
 
-        # === 第2段（第1段の“上”に描画） ===
-        # → 第1段の中心から「ロケットの向き」にROCKET_HEIGHT分上へずらす
-        offset_x = ROCKET_HEIGHT * cos_a
-        offset_y = ROCKET_HEIGHT * sin_a
-        stage2_cx = cx + offset_x
-        stage2_cy = cy + offset_y
+        # === 第2段ロケット（オプション） ===
+        if self.draw_stage2:
+            offset_x = ROCKET_HEIGHT * cos_a
+            offset_y = ROCKET_HEIGHT * sin_a
+            stage2_cx = cx + offset_x
+            stage2_cy = cy + offset_y
 
-        stage2_corners = []
-        for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
-            x = stage2_cx + dx * cos_a - dy * sin_a
-            y = stage2_cy + dx * sin_a + dy * cos_a
-            stage2_corners.append((int(x), int(y)))
+            stage2_corners = []
+            for dx, dy in [(-h2, -w2), (h2, -w2), (h2, w2), (-h2, w2)]:
+                x = stage2_cx + dx * cos_a - dy * sin_a
+                y = stage2_cy + dx * sin_a + dy * cos_a
+                stage2_corners.append((x, y))
 
-        for i in range(4):
-            x1, y1 = stage2_corners[i]
-            x2, y2 = stage2_corners[(i + 1) % 4]
-            pyxel.line(x1, y1, x2, y2, color)
+            # 第2段も塗りつぶし（三角形2枚）
+            pyxel.tri(*map(int, stage2_corners[0] + stage2_corners[1] + stage2_corners[2]), color)
+            pyxel.tri(*map(int, stage2_corners[2] + stage2_corners[3] + stage2_corners[0]), color)
+
+            # === 第1段と第2段の境界線 ===
+            if self.draw_stage2:
+                # 第1段の中心位置から、ロケットの「向き」方向に半分の長さだけ移動すれば境界になる
+                border_x = cx + h2 * cos_a
+                border_y = cy + h2 * sin_a
+
+                # 幅の半分で左右に広げて境界線を描く（カラーは白で）
+                left_x = border_x - w2 * sin_a
+                left_y = border_y + w2 * cos_a
+                right_x = border_x + w2 * sin_a
+                right_y = border_y - w2 * cos_a
+
+                pyxel.line(int(left_x), int(left_y), int(right_x), int(right_y), 5)
 
 
 
