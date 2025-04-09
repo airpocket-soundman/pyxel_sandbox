@@ -47,18 +47,17 @@ STAGE_LAUNCH = 1     # 離陸フェーズ
 STAGE_LANDING = 2    # 着陸フェーズ
 
 # ステージ制：ステージ1（離陸）クリア高度（ピクセル）
-STAGE1_CLEAR_HEIGHT = 20
+STAGE1_CLEAR_HEIGHT = 200
 
 # ステージ2での着地位置許容誤差（±ピクセル）
 LANDING_TOLERANCE_PX = 10  
 
 # ステージ2初期設定（着陸フェーズ）
-STAGE2_INITIAL_X = 50                      # 初期X座標（発射台中央）
-STAGE2_INITIAL_Y = 100  # 初期Y座標（地面すれすれ）
+STAGE2_INITIAL_X = 50                       # 初期X座標(センターは128)
+STAGE2_INITIAL_Y = 100                      # 初期Y座標
 STAGE2_INITIAL_ANGLE = -math.pi / 2         # 垂直向き（上向き）
 STAGE2_INITIAL_VX = 0.0                     # X方向速度ゼロ
 STAGE2_INITIAL_VY = 0.0                     # Y方向速度ゼロ
-
 
 class Particle:
     def __init__(self, x, y, dx, dy, lifetime, color, smoke=False):
@@ -75,7 +74,6 @@ class Particle:
         self.stage = 1  # 現在のステージ（1: 離陸, 2: 着陸）
         self.stage1_cleared = False  # ステージ1がクリアされたか
         self.stage1_clear_display = False  # 表示フラグ
-
 
     def update(self):
         if self.is_smoke:
@@ -131,9 +129,7 @@ class App:
         self.stage2_cleared = False
         self.stage2_clear_display = False
         self.show_chopsticks = False  # ステージ2限定の表示フラグ
-
-
-
+        self.draw_stage2 = True
 
     def get_rocket_base_position(self):
         base_x = self.rocket_x - (ROCKET_HEIGHT / 2) * math.cos(self.rocket_angle)
@@ -212,9 +208,6 @@ class App:
                         self.rocket_angle = math.radians(13 - 90)  # +13°
                     else:
                         self.rocket_angle = math.radians(-13 - 90)  # -13°
-
-
-
 
             if len(grounded) == 1:
                 _, dx, _ = grounded[0]
@@ -320,19 +313,21 @@ class App:
 
                 # 表示を消す
                 self.stage1_clear_display = False
+            
 
         # ステージ2クリア条件チェック（爆発しておらず、中央付近に着陸）
         if self.stage == 2 and not self.stage2_cleared:
+            print(self.stage,self.vx,self.vy) 
             # 地面に接地していて、爆発しておらず
-            if grounded and not self.exploded and self.vx == 0 and self.vy == 0:
+            if grounded and not self.exploded and self.vx <= 0.0001 and self.vy <= 0.0001:
+                print("着陸")
 
                 # 発射台中央からのXオフセット
                 center_offset = abs(self.rocket_x - 128)
+                print("着陸",center_offset)
                 if center_offset <= LANDING_TOLERANCE_PX:
                     self.stage2_cleared = True
                     self.stage2_clear_display = True
-
-
 
     def spawn_thruster_particles(self, side):
         cx = self.rocket_x
@@ -498,7 +493,6 @@ class App:
             pyxel.text(x1, pyxel.height // 2 - 4, msg1, 7)
             pyxel.text(x2, pyxel.height // 2 + 4, msg2, 6)
 
-
         if self.stage2_clear_display:
             msg1 = "STAGE 2 LANDING SUCCESS!"
             msg2 = "(press ENTER)"
@@ -512,7 +506,6 @@ class App:
             chopstick_width = 4  # ここで太さを指定
             chopstick_y = GROUND_Y - tower_height + 10
             pyxel.rect(tower_x - chopstick_length, chopstick_y, chopstick_length, chopstick_width, 7)
-
 
     def draw_rotated_rocket(self):
         cx = self.rocket_x
@@ -567,8 +560,6 @@ class App:
 
                 pyxel.line(int(left_x), int(left_y), int(right_x), int(right_y), 5)
 
-
-
     def trigger_explosion_effect(self):
         for _ in range(500):  # 爆発パーティクル数（調整可）
             angle = random.uniform(0, 2 * math.pi)
@@ -576,9 +567,15 @@ class App:
             dx = math.cos(angle) * speed
             dy = math.sin(angle) * speed
             lifetime = random.randint(15, 30)
-            color = random.choice([pyxel.COLOR_RED, pyxel.COLOR_ORANGE, pyxel.COLOR_YELLOW])
-            self.flame_particles.append(
-                Particle(self.rocket_x, self.rocket_y, dx, dy, lifetime, color, smoke=False)
-            )
+            color = random.choice([pyxel.COLOR_RED, 
+                                   pyxel.COLOR_ORANGE, 
+                                   pyxel.COLOR_YELLOW])
+            self.flame_particles.append(Particle(self.rocket_x, 
+                                                 self.rocket_y, 
+                                                 dx, 
+                                                 dy, 
+                                                 lifetime, 
+                                                 color, 
+                                                 smoke=False))
 
 App()
