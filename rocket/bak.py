@@ -2,66 +2,108 @@ import pyxel
 import random
 import math
 
-# 定数定義
-ROCKET_WIDTH = 8
-ROCKET_HEIGHT = 24
-GROUND_Y = 240
+# --------------------------------------------------
+# ゲーム定数設定
+# --------------------------------------------------
+"""ロケットと物理演算に関する基本定数"""
+ROCKET_WIDTH = 8  # ロケットの幅（ピクセル）
+ROCKET_HEIGHT = 24  # ロケットの高さ（ピクセル）
+GROUND_Y = 240  # 地面のY座標
 
-FRAME_RATE = 60
-GRAVITY = 9.8
-THRUST = 12.0
-SCALE = 0.3
-GRAVITY_PER_FRAME = (GRAVITY / FRAME_RATE) * SCALE
-THRUST_PER_FRAME = (THRUST / FRAME_RATE) * SCALE
+# 物理演算定数
+FRAME_RATE = 60  # フレームレート（FPS）
+GRAVITY = 9.8  # 重力加速度（m/s²）
+THRUST = 12.0  # スラスト力（ニュートン）
+SCALE = 0.3  # 表示スケール（物理計算と表示の比率調整）
+GRAVITY_PER_FRAME = (GRAVITY / FRAME_RATE) * SCALE  # 1フレームあたりの重力
+THRUST_PER_FRAME = (THRUST / FRAME_RATE) * SCALE  # 1フレームあたりの推力
 
-# 回転加速度設定
-ROTATION_ACCELERATION = math.radians(0.1)
-ROTATION_FRICTION = 0.98
+# 回転制御パラメータ
+ROTATION_ACCELERATION = math.radians(0.1)  # 回転加速度（ラジアン/フレーム²）
+ROTATION_FRICTION = 0.98  # 回転摩擦係数（0.0～1.0）
 
-# メインエンジンパーティクル
-FLAME_PARTICLE_COUNT = 20
-FLAME_PARTICLE_LIFETIME = 7
-FLAME_PARTICLE_SPEED = 2.0
-FLAME_PARTICLE_DENSITY = 2
+# --------------------------------------------------
+# パーティクルシステム設定
+# --------------------------------------------------
+"""メインエンジンの噴射効果に関する設定"""
+FLAME_PARTICLE_COUNT = 20  # 1フレームあたりの炎パーティクル数
+FLAME_PARTICLE_LIFETIME = 7  # パーティクルの生存期間（フレーム）
+FLAME_PARTICLE_SPEED = 2.0  # パーティクルの基本速度
+FLAME_PARTICLE_DENSITY = 2  # パーティクルの密度（線形補間用）
 
-# スモーク
-SMOKE_PARTICLE_COUNT = 5
-SMOKE_PARTICLE_LIFETIME = FLAME_PARTICLE_LIFETIME * 20
-SMOKE_PARTICLE_SPEED_MIN = 0.2
-SMOKE_PARTICLE_SPEED_MAX = 0.5
+"""着陸時のスモーク効果に関する設定"""
+SMOKE_PARTICLE_COUNT = 5  # 1回の衝突あたりのスモークパーティクル数
+SMOKE_PARTICLE_LIFETIME = FLAME_PARTICLE_LIFETIME * 20  # 生存期間（炎より長く）
+SMOKE_PARTICLE_SPEED_MIN = 0.2  # 最小拡散速度
+SMOKE_PARTICLE_SPEED_MAX = 0.5  # 最大拡散速度
 
-# スラスタパーティクル設定（←→）
-THRUSTER_PARTICLE_COUNT = 10
-THRUSTER_PARTICLE_SPEED = 3
-THRUSTER_PARTICLE_LIFETIME = 3
-THRUSTER_ANGLE_VARIATION = math.radians(10)
+"""姿勢制御用スラスタのパーティクル設定"""
+THRUSTER_PARTICLE_COUNT = 10  # 1回の噴射あたりのパーティクル数
+THRUSTER_PARTICLE_SPEED = 3  # パーティクルの基本速度
+THRUSTER_PARTICLE_LIFETIME = 3  # 生存期間（フレーム）
+THRUSTER_ANGLE_VARIATION = math.radians(10)  # 噴射角度のばらつき
 
-# 衝突判定
-RANDING_SPEEED = 0.5  # 衝突判定の閾値（速度）
+# --------------------------------------------------
+# ゲームプレイ設定
+# --------------------------------------------------
+"""衝突判定の閾値設定"""
+RANDING_SPEEED = 0.5  # 安全着陸と判定する最大速度（ピクセル/フレーム）
 
-# 表示設定
-SHOW_STAGE2 = True  # 第2段を描画するかどうか（Trueで描画、Falseで非表示）
+"""ゲームの表示関連設定"""
+SHOW_STAGE2 = True  # 第2段ロケットの表示フラグ
 
-# ステージ識別
-STAGE_LAUNCH = 1     # 離陸フェーズ
-STAGE_LANDING = 2    # 着陸フェーズ
+"""ゲームステージ管理用定数"""
+STAGE_LAUNCH = 1     # 離陸ステージ識別子
+STAGE_LANDING = 2    # 着陸ステージ識別子
 
-# ステージ制：ステージ1（離陸）クリア高度（ピクセル）
-STAGE1_CLEAR_HEIGHT = 200
+# ステージ1（離陸）クリア条件
+STAGE1_CLEAR_HEIGHT = 200  # クリアに必要な最低高度
 
-# ステージ2での着地位置許容誤差（±ピクセル）
-LANDING_TOLERANCE_PX = 10  
+# ステージ2（着陸）クリア条件
+LANDING_TOLERANCE_PX = 10  # 着陸位置の許容誤差（中央からのピクセル数）
 
-# ステージ2初期設定（着陸フェーズ）
-STAGE2_INITIAL_X = 50                       # 初期X座標(センターは128)
-STAGE2_INITIAL_Y = 100                      # 初期Y座標
-STAGE2_INITIAL_ANGLE = -math.pi / 2         # 垂直向き（上向き）
-STAGE2_INITIAL_VX = 0.0                     # X方向速度ゼロ
-STAGE2_INITIAL_VY = 0.0                     # Y方向速度ゼロ
+"""ステージ2（着陸）の初期状態設定"""
+STAGE2_INITIAL_X = 50           # 初期X座標（画面中央は128）
+STAGE2_INITIAL_Y = 100          # 初期Y座標
+STAGE2_INITIAL_ANGLE = -math.pi / 2  # 初期角度（垂直上向き）
+STAGE2_INITIAL_VX = 0.0         # 初期X方向速度
+STAGE2_INITIAL_VY = 0.0         # 初期Y方向速度
 
+# --------------------------------------------------
+# パーティクルクラス
+# --------------------------------------------------
 class Particle:
+    """
+    パーティクルを管理するクラス
+    
+    Attributes:
+        x (float): X座標
+        y (float): Y座標
+        dx (float): X方向速度
+        dy (float): Y方向速度
+        lifetime (int): 生存期間（フレーム数）
+        color (int): 表示色
+        bounced (bool): 地面反射フラグ
+        generate_smoke (bool): スモーク生成フラグ
+        is_smoke (bool): スモークパーティクル判定
+        stage (int): 現在のステージ
+        stage1_cleared (bool): ステージ1クリアフラグ
+        stage1_clear_display (bool): クリア表示フラグ
+    """
     def __init__(self, x, y, dx, dy, lifetime, color, smoke=False):
-        self.show_chopsticks = False  # ステージ2限定の表示フラグ
+        """
+        パーティクルの初期化
+        
+        Args:
+            x (float): 初期X座標
+            y (float): 初期Y座標
+            dx (float): X方向初速
+            dy (float): Y方向初速
+            lifetime (int): 生存期間（フレーム数）
+            color (int): パーティクル色
+            smoke (bool): スモークパーティクルかどうか
+        """
+        self.show_chopsticks = False  # ステージ2専用のチョップスティック表示フラグ
         self.x = x
         self.y = y
         self.dx = dx
@@ -76,37 +118,77 @@ class Particle:
         self.stage1_clear_display = False  # 表示フラグ
 
     def update(self):
+        """
+        パーティクルの状態を更新
+        
+        Returns:
+            bool: パーティクルが寿命終了または地面衝突した場合True
+        """
         if self.is_smoke:
-            self.dy += 0.001
+            self.dy += 0.001  # スモークの浮遊効果
+
+        # 位置と生存時間の更新
         self.x += self.dx
         self.y += self.dy
         self.lifetime -= 1
 
+        # 地面衝突判定
         if self.generate_smoke and self.y >= GROUND_Y:
-            return True
+            return True  # スモーク生成要求
 
+        # スモークの地面反射処理
         if self.is_smoke and not self.bounced and self.y >= GROUND_Y:
             self.y = GROUND_Y
             angle = random.uniform(-math.pi * 0.75, -math.pi * 0.25)
             speed = math.sqrt(self.dx ** 2 + self.dy ** 2) * 0.5
-            self.dx = math.cos(angle) * speed
-            self.dy = math.sin(angle) * speed
-            self.bounced = True
+            self.dx = math.cos(angle) * speed  # 反射後のX速度
+            self.dy = math.sin(angle) * speed  # 反射後のY速度
+            self.bounced = True  # 反射済みフラグ
 
-        return False
+        return self.lifetime <= 0  # 生存期間終了判定
 
     def draw(self):
+        """パーティクルを画面に描画"""
         if self.lifetime > 0:
             pyxel.pset(int(self.x), int(self.y), self.color)
 
+# --------------------------------------------------
+# メインアプリケーションクラス
+# --------------------------------------------------
 class App:
+    """
+    メインゲームアプリケーションを管理するクラス
+    
+    Attributes:
+        rocket_x (float): ロケットのX座標
+        rocket_y (float): ロケットのY座標
+        rocket_angle (float): ロケットの角度（ラジアン）
+        rotation_speed (float): 回転速度
+        vx (float): X方向速度
+        vy (float): Y方向速度
+        thrust (float): 現在の推力
+        gravity (float): 重力加速度
+        flame_particles (list): 炎パーティクルリスト
+        smoke_particles (list): スモークパーティクルリスト
+        thruster_particles (list): スラスタパーティクルリスト
+        fallen (bool): 転倒フラグ
+        exploded (bool): 爆発フラグ
+        thrust_level (float): スロットルレベル（0.0～1.0）
+        stage (int): 現在のステージ
+    """
     def __init__(self):
+        """アプリケーションの初期化"""
         pyxel.init(256, 256, title="Rocket Launch")
-        self.draw_stage2 = SHOW_STAGE2  # ← このように初期化
+        self.draw_stage2 = SHOW_STAGE2  # 第2段表示フラグ
+        self.game_started = False
+        self.countdown = 0
         self.reset()
         pyxel.run(self.update, self.draw)
 
     def reset(self):
+        """ゲーム状態をリセット"""
+        self.game_started = False
+        self.countdown = 0
         self.rocket_x = 128
         self.rocket_y = GROUND_Y - ROCKET_HEIGHT // 2
         self.rocket_angle = -math.pi / 2
@@ -132,11 +214,23 @@ class App:
         self.draw_stage2 = True
 
     def get_rocket_base_position(self):
+        """
+        ロケットの基底座標を計算
+        
+        Returns:
+            tuple: (base_x, base_y) 基底座標
+        """
         base_x = self.rocket_x - (ROCKET_HEIGHT / 2) * math.cos(self.rocket_angle)
         base_y = self.rocket_y - (ROCKET_HEIGHT / 2) * math.sin(self.rocket_angle)
         return base_x, base_y
 
     def get_rotated_corners(self):
+        """
+        回転後のロケットコーナー座標を計算
+        
+        Returns:
+            list: 4つのコーナー座標とオフセットを含むタプルのリスト
+        """
         cx = self.rocket_x
         cy = self.rocket_y
         w2 = ROCKET_WIDTH / 2
@@ -151,21 +245,67 @@ class App:
         return corners
 
     def update(self):
+        """
+        ゲーム状態を更新するメインループ
+        
+        処理内容:
+        - 入力処理
+        - 物理計算
+        - 衝突判定
+        - パーティクル更新
+        - ステージ遷移管理
+        """
         if pyxel.btnp(pyxel.KEY_R):
             self.reset()
 
+        # ゲーム開始前の処理
+        if not self.game_started:
+            if pyxel.btnp(pyxel.KEY_SPACE):
+                self.game_started = True
+                self.countdown = 180  # 3秒 (60fps * 3)
+            return
+
+        # カウントダウン処理
+        if self.countdown > 0:
+            self.countdown -= 1
+            if self.countdown == 0:
+                # カウントダウン終了、ゲーム開始
+                pass
+            return
+
+        # 爆発エフェクト処理
+        if self.exploded:
+            self.trigger_explosion_effect()
+            self.exploded = False
+
+        # パーティクル更新
+        self.update_particles()
+
+        # 転倒状態ではキー入力無効だが物理演算は継続
         if self.fallen:
-            
             if self.exploded:
                 self.trigger_explosion_effect()
-                self.exploded = False  # 実行後にフラグをリセット
-
-            # パーティクルだけ更新し続ける
+                self.exploded = False
+            
+            # 転倒時の物理演算
+            corners = self.get_rotated_corners()
+            grounded = [(pt, dx, dy) for (pt, dx, dy) in corners if pt[1] >= GROUND_Y]
+            if grounded:
+                if len(grounded) == 1:
+                    _, dx, _ = grounded[0]
+                    if abs(dx) > ROCKET_HEIGHT / 2 - 1:
+                        # 長辺側で1点接地 - 回転速度を強く減衰
+                        #self.rotation_speed *= ROTATION_FRICTION * 0.9
+                        self.rocket_angle += self.rotation_speed
+                elif len(grounded) >= 2:
+                    # 長辺側で2点以上接地 - 完全に停止
+                    self.rotation_speed = 0
+                    # 地面に密着させる
+                    min_y = min(pt[1] for pt, _, _ in grounded)
+                    if min_y > GROUND_Y:
+                        self.rocket_y -= (min_y - GROUND_Y)
+            
             self.update_particles()
-
-            # パーティクルがすべて消えるまで処理継続（終了せずに待機）
-            if not self.flame_particles and not self.smoke_particles and not self.thruster_particles:
-                return
             return
 
         if self.exploded:
@@ -174,15 +314,15 @@ class App:
             self.exploded = False  # 実行後にフラグをリセット
         
         # ↑↓キーで出力（スロットル）を調整
-        if pyxel.btn(pyxel.KEY_UP):
+        if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_UP):
             self.thrust_level = min(1.0, self.thrust_level + 0.01)
-        if pyxel.btn(pyxel.KEY_DOWN):
+        if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_DOWN):
             self.thrust_level = max(0.0, self.thrust_level - 0.01)
         self.thrust = THRUST_PER_FRAME * self.thrust_level
 
         self.last_base_x, self.last_base_y = self.get_rocket_base_position()
 
-        if not self.exploded_done and pyxel.btn(pyxel.KEY_SPACE):
+        if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_SPACE):
             ax = math.cos(self.rocket_angle) * self.thrust
             ay = math.sin(self.rocket_angle) * self.thrust
             self.vx += ax
@@ -232,11 +372,9 @@ class App:
                     self.rotation_speed = 0
             else:
                 self.rotation_speed = 0
-                if not self.exploded and not self.exploded_done:
-                    self.rocket_angle = -math.pi / 2
 
-            is_turning_left = not self.exploded_done and pyxel.btn(pyxel.KEY_LEFT)
-            is_turning_right = not self.exploded_done and pyxel.btn(pyxel.KEY_RIGHT)
+            is_turning_left = not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_LEFT)
+            is_turning_right = not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_RIGHT)
 
             if len(grounded) == 1:
                 anchor_pt, dx_anchor, dy_anchor = grounded[0]
@@ -254,6 +392,11 @@ class App:
             if angle_deg > 90 or angle_deg < -90:
                 self.exploded = True  # ★ 横転による爆発
                 self.fallen = True
+                self.rotation_speed = 0  # 回転速度を0に
+                self.vx = 0  # X方向速度を0に
+                self.vy = 0  # Y方向速度を0に
+                if self.stage == 1:
+                    self.trigger_explosion_effect()
                 return
 
             cos_a = math.cos(self.rocket_angle)
@@ -271,14 +414,14 @@ class App:
         else:
             self.rotation_speed = 0
             if not self.fallen:
-                if pyxel.btn(pyxel.KEY_LEFT):
+                if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_LEFT):
                     self.rocket_angle -= math.radians(2)
                     self.spawn_thruster_particles("right")
-                if pyxel.btn(pyxel.KEY_RIGHT):
+                if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_RIGHT):
                     self.rocket_angle += math.radians(2)
                     self.spawn_thruster_particles("left")
 
-        if pyxel.btn(pyxel.KEY_SPACE):
+        if not self.stage2_clear_display and not self.exploded_done and pyxel.btn(pyxel.KEY_SPACE):
             self.spawn_flame_particles_from_base_line()
 
         # 更新処理
@@ -317,11 +460,8 @@ class App:
 
         # ステージ2クリア条件チェック（爆発しておらず、中央付近に着陸）
         if self.stage == 2 and not self.stage2_cleared:
-            print(self.stage,self.vx,self.vy) 
             # 地面に接地していて、爆発しておらず
-            if grounded and not self.exploded and self.vx <= 0.0001 and self.vy <= 0.0001:
-                print("着陸")
-
+            if grounded and not self.exploded_done and self.vx <= 0.0001 and self.vy <= 0.0001:
                 # 発射台中央からのXオフセット
                 center_offset = abs(self.rocket_x - 128)
                 print("着陸",center_offset)
@@ -330,6 +470,12 @@ class App:
                     self.stage2_clear_display = True
 
     def spawn_thruster_particles(self, side):
+        """
+        姿勢制御スラスタのパーティクルを生成
+        
+        Args:
+            side (str): 噴射側（"left" or "right"）
+        """
         cx = self.rocket_x
         cy = self.rocket_y
 
@@ -374,14 +520,26 @@ class App:
             offsets = [0] + [random.uniform(-ROCKET_WIDTH / 2, ROCKET_WIDTH / 2) for _ in range(count - 1)]
 
             for offset in offsets:
-                px = bx + offset * math.cos(self.rocket_angle + math.pi / 2)
-                py = by + offset * math.sin(self.rocket_angle + math.pi / 2)
+                # 側方オフセット（ロケット左右方向）
+                base_px = bx + offset * math.cos(self.rocket_angle + math.pi / 2)
+                base_py = by + offset * math.sin(self.rocket_angle + math.pi / 2)
+
+                # パーティクルの進行方向（真後ろ）
                 angle = self.rocket_angle + math.pi
-                dx = math.cos(angle) * FLAME_PARTICLE_SPEED + self.vx
-                dy = math.sin(angle) * FLAME_PARTICLE_SPEED + self.vy
+                dx = math.cos(angle) * FLAME_PARTICLE_SPEED
+                dy = math.sin(angle) * FLAME_PARTICLE_SPEED
+
+                # ★ 追加：速度方向に沿って、最大で1フレーム分だけ逆方向にばらけさせる
+                back_offset = random.uniform(0, FLAME_PARTICLE_SPEED * 3)
+                px = base_px + dx / FLAME_PARTICLE_SPEED * back_offset 
+                py = base_py + dy / FLAME_PARTICLE_SPEED * back_offset
+
+                # パーティクルの寿命と色
                 lifetime = int(random.uniform(FLAME_PARTICLE_LIFETIME * 0.7, FLAME_PARTICLE_LIFETIME * 1.3))
                 color = random.choice([8, 10, 14])
+
                 self.flame_particles.append(Particle(px, py, dx, dy, lifetime, color))
+
 
     def spawn_smoke_particles(self, x, y):
         particles = []
@@ -419,6 +577,23 @@ class App:
 
     def draw(self):
         pyxel.cls(12)
+
+        # ゲーム開始前の表示
+        if not self.game_started:
+            msg = "PUSH SPACE TO GAME START"
+            x = (pyxel.width - len(msg) * 4) // 2
+            y = pyxel.height // 2
+            pyxel.text(x, y, msg, 7)
+            return
+
+        # カウントダウン表示
+        if self.countdown > 0:
+            count = (self.countdown // 60) + 1  # 3,2,1
+            msg = str(count)
+            x = (pyxel.width - len(msg) * 8) // 2
+            y = pyxel.height // 2
+            pyxel.text(x, y, msg, 7)
+            return
 
         # 地面（カラー4：茶色）
         pyxel.rect(0, GROUND_Y, pyxel.width, pyxel.height - GROUND_Y, 4)
@@ -464,7 +639,7 @@ class App:
         lines = [
             f"SPD: {speed: >+9.2f}",
             f"VX : {self.vx: >+9.2f}",
-            f"VY : {self.vy: >+9.2f}",
+            f"VY : {-self.vy: >+9.2f}",  # 重力方向と表示を合わせるため符号反転
             f"HGT: {height: >+9.2f}",
             f"XOF: {horizontal: >+9.2f}",
             f"ANG: {angle_deg: >+9.2f}",
@@ -493,13 +668,28 @@ class App:
             pyxel.text(x1, pyxel.height // 2 - 4, msg1, 7)
             pyxel.text(x2, pyxel.height // 2 + 4, msg2, 6)
 
-        if self.stage2_clear_display:
+        if not self.exploded_done and self.stage2_clear_display:
             msg1 = "STAGE 2 LANDING SUCCESS!"
-            msg2 = "(press ENTER)"
+            msg2 = "(PRESS ENTER TO RESTART)"
             x1 = (pyxel.width - len(msg1) * 4) // 2
             x2 = (pyxel.width - len(msg2) * 4) // 2
             pyxel.text(x1, pyxel.height // 2 + 16, msg1, 10)
             pyxel.text(x2, pyxel.height // 2 + 26, msg2, 7)
+            
+            if pyxel.btnp(pyxel.KEY_RETURN):
+                self.reset()
+
+        if self.exploded_done:
+            msg1 = "MISSION FAILED!"
+            msg2 = "(press ENTER to reset)"
+            x1 = (pyxel.width - len(msg1) * 4) // 2
+            x2 = (pyxel.width - len(msg2) * 4) // 2
+            pyxel.text(x1, pyxel.height // 2 + 16, msg1, 10)
+            pyxel.text(x2, pyxel.height // 2 + 26, msg2, 7)
+            
+            if pyxel.btnp(pyxel.KEY_RETURN):
+                self.reset()
+
 
         if self.show_chopsticks:
             chopstick_length = 30
@@ -561,6 +751,7 @@ class App:
                 pyxel.line(int(left_x), int(left_y), int(right_x), int(right_y), 5)
 
     def trigger_explosion_effect(self):
+        self.exploded_done = True  # 爆発完了フラグ設定
         for _ in range(500):  # 爆発パーティクル数（調整可）
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(1.5, 3.5)
