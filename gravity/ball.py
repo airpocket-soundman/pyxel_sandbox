@@ -6,7 +6,7 @@ class App:
         pyxel.init(256, 256, title="Ball Shooter")
         self.reset()
         self.gravity_on = False  # 重力の初期状態はオフ
-        self.gravity = 0.1  # 重力加速度
+        self.gravity = 0.5  # 重力加速度
         self.scale_factor = 0.5  # スケールを50%に設定
         pyxel.run(self.update, self.draw)
 
