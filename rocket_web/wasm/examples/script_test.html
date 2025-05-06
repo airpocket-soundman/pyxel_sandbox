@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/gh/kitao/pyxel/wasm/pyxel.js"></script>
+  </head>
+
+  <body>
+    <div
+      id="pyxel-screen"
+      style="width: 640px; height: 480px; left: 20px; top: 50px"
+    ></div>
+    <pyxel-run
+      script="
+        import pyxel
+        import numpy as np
+        import pandas as pd
+
+        pyxel.init(200, 100)
+        x = 0
+
+        def update():
+          global x
+          x += 1
+          if x > 220:
+            x -= 300
+
+        def draw():
+          pyxel.cls(2)
+          pyxel.line(0, 0, 100, 100, 7)
+          pyxel.rect(40, 55, 40, 40, 8)
+          pyxel.circ(x, 25, 20, 3)
+          pyxel.text(105, 80, f'NumPy  version: {np.__version__}', 9);
+          pyxel.text(105, 90, f'Pandas version: {pd.__version__}', 9);
+
+        pyxel.run(update, draw)
+      "
+      packages="numpy,pandas"
+      gamepad="enabled"
+    ></pyxel-run>
+  </body>
+</html>
